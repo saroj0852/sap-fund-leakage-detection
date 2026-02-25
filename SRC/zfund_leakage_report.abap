@@ -14,40 +14,67 @@ START-OF-SELECTION.
   PERFORM process_data.
   PERFORM display_alv.
 
-
+*---------------------------------------------------------------------*
 FORM get_data.
 
-  CLEAR: gt_alloc, gt_util.
+  DATA: ls_alloc TYPE ty_allocation,
+        ls_util  TYPE ty_utilization.
 
-  gt_alloc = VALUE #(
-    ( department = 'HEALTH'    sector = 'PUBLIC' fiscal_year = p_year allocated = 100000 )
-    ( department = 'EDUCATION' sector = 'PUBLIC' fiscal_year = p_year allocated = 150000 )
-    ( department = 'DEFENCE'   sector = 'PUBLIC' fiscal_year = p_year allocated = 200000 )
-  ).
+  CLEAR gt_alloc.
+  CLEAR gt_util.
 
-  gt_util = VALUE #(
-    ( department = 'HEALTH'    posting_date = sy-datum utilized = 120000 )
-    ( department = 'EDUCATION' posting_date = sy-datum utilized = 90000 )
-    ( department = 'DEFENCE'   posting_date = sy-datum utilized = 50000 )
-  ).
+  ls_alloc-department = 'HEALTH'.
+  ls_alloc-sector = 'PUBLIC'.
+  ls_alloc-fiscal_year = p_year.
+  ls_alloc-allocated = '100000'.
+  APPEND ls_alloc TO gt_alloc.
+
+  ls_alloc-department = 'EDUCATION'.
+  ls_alloc-sector = 'PUBLIC'.
+  ls_alloc-fiscal_year = p_year.
+  ls_alloc-allocated = '150000'.
+  APPEND ls_alloc TO gt_alloc.
+
+  ls_alloc-department = 'DEFENCE'.
+  ls_alloc-sector = 'PUBLIC'.
+  ls_alloc-fiscal_year = p_year.
+  ls_alloc-allocated = '200000'.
+  APPEND ls_alloc TO gt_alloc.
+
+  ls_util-department = 'HEALTH'.
+  ls_util-posting_date = sy-datum.
+  ls_util-utilized = '120000'.
+  APPEND ls_util TO gt_util.
+
+  ls_util-department = 'EDUCATION'.
+  ls_util-posting_date = sy-datum.
+  ls_util-utilized = '90000'.
+  APPEND ls_util TO gt_util.
+
+  ls_util-department = 'DEFENCE'.
+  ls_util-posting_date = sy-datum.
+  ls_util-utilized = '50000'.
+  APPEND ls_util TO gt_util.
 
 ENDFORM.
 
-
+*---------------------------------------------------------------------*
 FORM process_data.
 
   DATA: ls_result TYPE ty_result,
-        lv_total_alloc TYPE p DECIMALS 2 VALUE 0,
-        lv_total_util  TYPE p DECIMALS 2 VALUE 0.
+        ls_alloc  TYPE ty_allocation,
+        ls_util   TYPE ty_utilization,
+        lv_total_alloc TYPE p DECIMALS 2,
+        lv_total_util  TYPE p DECIMALS 2.
 
-  LOOP AT gt_alloc INTO DATA(ls_alloc).
+  LOOP AT gt_alloc INTO ls_alloc.
 
     CLEAR ls_result.
     ls_result-department = ls_alloc-department.
     ls_result-allocated  = ls_alloc-allocated.
 
-    READ TABLE gt_util INTO DATA(ls_util)
-      WITH KEY department = ls_alloc-department.
+    READ TABLE gt_util INTO ls_util
+         WITH KEY department = ls_alloc-department.
 
     IF sy-subrc = 0.
       ls_result-utilized = ls_util-utilized.
@@ -67,8 +94,8 @@ FORM process_data.
 
     APPEND ls_result TO gt_result.
 
-    lv_total_alloc += ls_result-allocated.
-    lv_total_util  += ls_result-utilized.
+    lv_total_alloc = lv_total_alloc + ls_result-allocated.
+    lv_total_util  = lv_total_util  + ls_result-utilized.
 
   ENDLOOP.
 
@@ -77,17 +104,21 @@ FORM process_data.
 
 ENDFORM.
 
-
+*---------------------------------------------------------------------*
 FORM display_alv.
 
-  DATA: lo_alv TYPE REF TO cl_salv_table.
+  DATA: lo_alv TYPE REF TO cl_salv_table,
+        lo_cols TYPE REF TO cl_salv_columns_table,
+        lo_col  TYPE REF TO cl_salv_column.
 
   cl_salv_table=>factory(
-    IMPORTING r_salv_table = lo_alv
-    CHANGING  t_table      = gt_result ).
+      IMPORTING r_salv_table = lo_alv
+      CHANGING  t_table      = gt_result ).
 
-  lo_alv->get_columns( )->get_column( 'ICON' )->set_icon( abap_true ).
+  lo_cols = lo_alv->get_columns( ).
+  lo_col ?= lo_cols->get_column( 'ICON' ).
+  lo_col->set_icon( abap_true ).
 
-  lo_alv->display( ).
+  lo_alv->display.
 
 ENDFORM.
